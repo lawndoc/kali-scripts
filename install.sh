@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-install_from () {
+install_scripts () {
   for file in $1/*; do
 
-    # recursively add files in folders
-    if [ -d $file ]; then
-      install_from $file
-
-    # skip this script
-    elif [ $file == "$1/install.sh" ]; then
+    # skip this script and the man pages
+    if [ $file == "$1/install.sh" ] || [ $file == "$1/Man" ]; then
       continue
+
+    # recursively add files in folders
+    elif [ -d $file ]; then
+      install_scripts $file
 
     # hard link each script to usr bin
     elif [ -f $file ]; then
@@ -19,4 +19,20 @@ install_from () {
   done
 }
 
-install_from $(pwd)
+install_man_pages () {
+  for file in Man/*; do
+
+    # skip the new man page creator script
+    if [ $file == "$1/newPage.py" ]; then
+      continue
+
+    # install man page
+    else
+      install -g 0 -o 0 -m 0644 $file.1 /usr/local/man/man1
+      gzip /usr/local/man1/$file.1
+    fi
+  done
+}
+
+install_scripts $(pwd)
+install_man_pages
