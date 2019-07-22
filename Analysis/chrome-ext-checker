@@ -50,7 +50,7 @@ class Analyzer:
         riskyPerms = ["bookmarks", "clipboardRead", "clipboardWrite", "contentSettings", "debugger", "desktopCapture", \
                      "downloads", "geolocation", "history", "management", "nativeMessaging", "pageCapture", "privacy",\
                      "proxy", "tabCapture", "tabs", "topSites", "ttsEngine", "webNavigation"]
-        print("\nr[ PERMISSIONS ]\n|")
+        print("\n [ PERMISSIONS ]______________\n/")
         try:
             for permission in self.manifest["permissions"]:
                 if permission in riskyPerms:
@@ -60,11 +60,11 @@ class Analyzer:
                 print(permission)
         except:
             pass
-        print("\__________________")
+        print("\_____________________________")
         return
 
     def checkBackgroundTasks(self):
-        print("\nr[ BACKGROUND TASKS ]\n|")
+        print("\n [ BACKGROUND TASKS ]_________\n/")
         try:
             for script in manifest["background"]["scripts"]:
                 print("| " + script + "\n")
@@ -81,12 +81,12 @@ class Analyzer:
                 print(open("/tmp/extension/"+page, "r").read())
             except:
                 pass
-        print("\__________________")
+        print("\_____________________________")
         return
 
     def checkJS(self):
         # look for URLS in javascript code
-        print("\nr[ URLS IN CODE ]\n|")
+        print("\n [ URLS IN CODE ]_____________\n/")
         for subdir, dirs, files, in os.walk("/tmp/extension"):
             for f in files:
                 if f.endswith(".js"):
@@ -97,7 +97,7 @@ class Analyzer:
                                 print("|\n| line", lineCount, "in " + subdir + "/" + f + ":")
                                 print("| " + line.strip())
                             lineCount += 1
-        print("\__________________")
+        print("\_____________________________")
         return
 
 def main():
