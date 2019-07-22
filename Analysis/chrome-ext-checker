@@ -2,13 +2,15 @@
 
 import requests
 from sys import argv
+import json
+import subprocess
 
-class urlHandler:
+class UrlHandler:
     def __init__(self, extURL):
         self.url = extURL
         self.manifest = ""
 
-    def getManifest(self):
+    def extractSourceCode(self):
         def getAppID(url):
             if url.find("/"):
                 return url.rsplit("/", 1)[1]
@@ -16,20 +18,69 @@ class urlHandler:
                 print("invalid url")
                 exit()
 
-        def getCrx(url):
+        def extractCrx(url):
             appID = getAppID(url)
-            dlURL = "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=49.0&x=id%3D" + appID + "%26installsource%3Dondemand%26uc"
+            dlURL = "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=49.0&x=id%3D" \
+                    + appID \
+                    + "%26installsource%3Dondemand%26uc"
             req = requests.get(dlURL, allow_redirects=True)
-            open("extension.crx", "wb").write(req.content)
+            open("/tmp/extension.crx", "wb").write(req.content)
+            subprocess.run(["unzip", "-o", "/tmp/extension.crx", "-d", "/tmp/extension"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        def unzip():
-            # extract zip from crx and unzip
-            return
+        extractCrx(self.url)
 
-        getCrx(self.url)
-        unzip()
-        # read manifest.json
+    def getManifest(self):
+        with open("/tmp/extension/manifest.json", "r") as f:
+            manifest = json.loads(f.read())
         return manifest
+
+    def getJSfiles(self):
+        pass # TODO
+
+class Analyzer:
+    def __init__(self):
+        self.manifest = {}
+        self.sourcePath = "/tmp/extension"
+
+    def loadManifest(self, manifest):
+        self.manifest = manifest
+
+    def checkPermissions(self):
+        riskyPerms = ["bookmarks", "clipboardRead", "clipboardWrite", "contentSettings", "debugger", "desktopCapture", \
+                     "downloads", "geolocation", "history", "management", "nativeMessaging", "pageCapture", "privacy",\
+                     "proxy", "tabCapture", "tabs", "topSites", "ttsEngine", "webNavigation"]
+        print("\nr[ PERMISSIONS ]\n|")
+        try:
+            for permission in self.manifest["permissions"]:
+                if permission in riskyPerms:
+                    permission = "| " + permission + " -- RISKY"
+                else:
+                    permission = "| " + permission
+                print(permission)
+        except:
+            print("| no permissions requested")
+        print("\_______________")
+        return
+
+    def checkBackgroundTasks(self):
+        print("\nr[ BACKGROUND TASKS ]\n|")
+        try:
+            for script in manifest["background"]["scripts"]:
+                print("| " + script + "\n")
+                print(open("/tmp/extension/"+script, "r").read())
+        except:
+            print("| no background scripts")
+        try:
+            for page in manifest["background"]["pages"]:
+                print("| " + page + "\n")
+                print(open("/tmp/extension/"+page, "r").read())
+        except:
+            try:
+                page = manifest["background"]["page"]
+                print(open("/tmp/extension/"+page, "r").read())
+            except:
+                print("| no background pages")
+        print("\_______________")
 
 def main():
     if len(argv) == 1:
@@ -37,7 +88,19 @@ def main():
         print("usage: chrome-ext-checker <url>")
         exit()
     url = argv[1]
-    handler = urlHandler(url)
+
+    analyzer = Analyzer()
+
+    # fetch source code data
+    handler = UrlHandler(url)
+    handler.extractSourceCode()
     manifest = handler.getManifest()
+    # TODO: handler.getJSfiles()
+
+    # analyze source code
+    analyzer.loadManifest(manifest)
+    analyzer.checkPermissions()
+    analyzer.checkBackgroundTasks()
+    # TODO: analyzer.checkJS(jsFilesList)
 
 main()
