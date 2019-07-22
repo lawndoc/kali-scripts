@@ -4,6 +4,7 @@ import requests
 from sys import argv
 import json
 import subprocess
+import os
 
 class UrlHandler:
     def __init__(self, extURL):
@@ -58,8 +59,8 @@ class Analyzer:
                     permission = "| " + permission
                 print(permission)
         except:
-            print("| no permissions requested")
-        print("\_______________")
+            pass
+        print("\__________________")
         return
 
     def checkBackgroundTasks(self):
@@ -79,8 +80,25 @@ class Analyzer:
                 page = manifest["background"]["page"]
                 print(open("/tmp/extension/"+page, "r").read())
             except:
-                print("| no background pages")
-        print("\_______________")
+                pass
+        print("\__________________")
+        return
+
+    def checkJS(self):
+        # look for URLS in javascript code
+        print("\nr[ URLS IN CODE ]\n|")
+        for subdir, dirs, files, in os.walk("/tmp/extension"):
+            for f in files:
+                if f.endswith(".js"):
+                    lineCount = 0
+                    with open(subdir+os.sep+f, "r") as jsCode:
+                        for line in jsCode:
+                            if "http://" in line or "https://" in line:
+                                print("|\n| line", lineCount, "in " + subdir + "/" + f + ":")
+                                print("| " + line.strip())
+                            lineCount += 1
+        print("\__________________")
+        return
 
 def main():
     if len(argv) == 1:
@@ -95,12 +113,11 @@ def main():
     handler = UrlHandler(url)
     handler.extractSourceCode()
     manifest = handler.getManifest()
-    # TODO: handler.getJSfiles()
 
     # analyze source code
     analyzer.loadManifest(manifest)
     analyzer.checkPermissions()
     analyzer.checkBackgroundTasks()
-    # TODO: analyzer.checkJS(jsFilesList)
+    analyzer.checkJS()
 
 main()
