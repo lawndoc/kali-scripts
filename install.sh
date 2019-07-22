@@ -23,7 +23,7 @@ install_man_pages () {
   for file in Man/*; do
 
     # skip the new man page creator script
-    if [ $file == "$1/newPage.py" ]; then
+    if [ $file == "newPage.py" ]; then
       continue
 
     # install man page
