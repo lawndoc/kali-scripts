@@ -100,12 +100,12 @@ class Analyzer:
                                 print("|\n| line", lineCount, "in " + subdir + "/" + f + ":")
                                 print("| " + line.strip())
                                 foundUrl = re.search('".*?"', line) # cool regex bro
-                                repChecker(line[index(foundUrl):
+                                self.repChecker(foundUrl)
                             lineCount += 1
         print("\_____________________________")
         return
 
-    def repChecker(ip):
+    def repChecker(self, ip):
 
         whoIsPrint(ip)
 
