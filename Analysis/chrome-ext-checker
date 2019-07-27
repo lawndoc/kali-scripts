@@ -4,7 +4,7 @@ import requests
 from sys import argv
 import json
 import subprocess
-import osi
+import os
 
 VT_API_KEY = open("/root/.api/virus-total.api", "r").read()
 AB_API_KEY = open("/root/.api/abuse-ip.api", "r").read()
@@ -36,10 +36,7 @@ class UrlHandler:
     def getManifest(self):
         with open("/tmp/extension/manifest.json", "r") as f:
             manifest = json.loads(f.read())
-        return manifest
-
-    def getJSfiles(self):
-        pass # TODO
+        return manifestO
 
 class Analyzer:
     def __init__(self):
@@ -99,8 +96,8 @@ class Analyzer:
                             if "http://" in line or "https://" in line:
                                 print("|\n| line", lineCount, "in " + subdir + "/" + f + ":")
                                 print("| " + line.strip())
-                                foundUrl = re.search('".*?"', line) # cool regex bro
-                                self.repChecker(foundUrl)
+#                                foundUrl = re.search('".*?"', line) # cool regex bro
+#                                self.repChecker(foundUrl)
                             lineCount += 1
         print("\_____________________________")
         return
