@@ -36,7 +36,7 @@ class UrlHandler:
     def getManifest(self):
         with open("/tmp/extension/manifest.json", "r") as f:
             manifest = json.loads(f.read())
-        return manifestO
+        return manifest
 
 class Analyzer:
     def __init__(self):
