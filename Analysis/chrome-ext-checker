@@ -11,7 +11,8 @@ Description: takes a URL of a Chrome extension in the web store, downloads
             tasks, and embedded URLs; works on both Linux and Windows
 """
 
-from sys import argv
+#from sys import argv
+import argparse
 import json
 import os
 import requests
@@ -284,15 +285,21 @@ class Analyzer:
 
 def main():
     # get URL from passed arg or prompt
-    if len(argv) == 1:
+    parser = argparse.ArgumentParser(description="Chrome browser extension analyzer")
+    parser.add_argument("-u", "--url",
+                        action="store",
+                        help="URL of extension in Chrome web store")
+# not ready
+#    parser.add_argument("-o", "--outputfile",
+#                        action="store",
+#                        help="Where to save the output of the analysis")
+    args = parser.parse_args()
+
+    if not args.url:
         print("Please enter the URL of the extension in the Chrome web store.")
         url = input("URL = ")
-    elif len(argv) == 2:
-        url = argv[1]
     else:
-        print("Please provide either the Chrome extension URL or no argument")
-        print("usage:\t$ Chrome-ext-checker <URL>\n\t\t$ Chrome-ext-checker")
-        exit()
+        url = args.url
 
     # initialize objects
     handler = UrlHandler(url)
