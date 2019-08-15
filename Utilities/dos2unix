@@ -2,7 +2,7 @@
 
 usage() {
 	echo "Incorrect number of arguments."
-	echo -e "\nUsage:\n$0 <unix input>"
+	echo -e "\nUsage:\n$0 <dos input>"
 }
 
 if [ $# -le 0 ]
@@ -17,6 +17,7 @@ then
 	exit 0
 fi
 
-sed 's/$'"/`echo \\\r`/" $1 > $1.dos
-echo "Wrote output to $1.dos"
+#tr -d '\015' <$1 > $2.unix
+tr -d '\r' <$1 > $1.unix
+echo "Wrote output to $1.unix"
 

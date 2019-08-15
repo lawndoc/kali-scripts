@@ -8,14 +8,15 @@ Description: takes a URL of a Chrome extension in the web store, downloads
 
 [ Change Log ]
 8/15/19 - Initial release -- input raw URL > script analyzes permissions, background
-            tasks, and embedded URLs
+            tasks, and embedded URLs; works on both Linux and Windows
 """
 
-import requests
 from sys import argv
 import json
-import subprocess
 import os
+import requests
+import subprocess
+from zipfile import ZipFile
 
 #VT_API_KEY = open("/root/.api/virus-total.api", "r").read()
 #AB_API_KEY = open("/root/.api/abuse-ip.api", "r").read()
@@ -28,6 +29,12 @@ class UrlHandler:
     def __init__(self, extURL):
         self.URL = extURL
         self.manifest = ""
+        if os.name == "nt":
+            self.tempPath = "C:\\Temp\\"
+            self.sourcePath = "C:\\Temp\\extension\\"
+        else:
+            self.tempPath = "/tmp/"
+            self.sourcePath = "/tmp/extension/"
 
     def extractSourceCode(self):
         """Extract the source code of the extension from the given URL"""
@@ -35,8 +42,11 @@ class UrlHandler:
         def getAppID(URL):
             """Parse the extension ID from the given URL"""
 
-            if URL.find("/"):
-                return URL.rsplit("/", 1)[1]
+            url = URL
+            if "?" in url:
+                url = url[:url.index("?")]
+            if url.find("/"):
+                return url.rsplit("/", 1)[1]
             else:
                 print("invalid URL")
                 exit()
@@ -49,17 +59,20 @@ class UrlHandler:
                     + appID \
                     + "%26installsource%3Dondemand%26uc"
             req = requests.get(dlURL, allow_redirects=True)
-            open("/tmp/extension.crx", "wb").write(req.content)
-            subprocess.run(["unzip", "-o", "/tmp/extension.crx", "-d", "/tmp/extension"],
-                           stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
+            open(self.tempPath+"extension.crx", "wb").write(req.content)
+            with ZipFile(self.tempPath+"extension.crx", "r") as archive:
+                archive.extractall(self.tempPath+"extension")
+# old way
+#            subprocess.run(["unzip", "-o", self.tempPath+"extension.crx", "-d", self.tempPath+"extension"],
+#                           stdout=subprocess.DEVNULL,
+#                           stderr=subprocess.DEVNULL)
 
         extractCrx(self.URL)
 
     def getManifest(self):
         """Extract the xml manifest from the source code"""
 
-        with open("/tmp/extension/manifest.json", "r") as f:
+        with open(self.sourcePath+"manifest.json", "r") as f:
             manifest = json.loads(f.read())
         return manifest
 
@@ -70,7 +83,10 @@ class Analyzer:
 
     def __init__(self):
         self.manifest = {}
-        self.sourcePath = "/tmp/extension"
+        if os.name == "nt":
+            self.sourcePath = "C:\\Temp\\extension"
+        else:
+            self.sourcePath = "/tmp/extension"
 
     def loadManifest(self, manifest):
         """Load the xml manifest for analysis"""
@@ -120,17 +136,17 @@ class Analyzer:
         try:
             for script in manifest["background"]["scripts"]:
                 print("| " + script + "\n")
-                print(open("/tmp/extension/" + script, "r").read())
+                print(open(self.sourcePath + script, "r").read())
         except BaseException:
             print("| no background scripts")
         try:
             for page in manifest["background"]["pages"]:
                 print("| " + page + "\n")
-                print(open("/tmp/extension/" + page, "r").read())
+                print(open(self.sourcePath + page, "r").read())
         except BaseException:
             try:
                 page = manifest["background"]["page"]
-                print(open("/tmp/extension/" + page, "r").read())
+                print(open(self.sourcePath + page, "r").read())
             except BaseException:
                 pass
         print(r"\_____________________________")
@@ -140,7 +156,7 @@ class Analyzer:
         """Look for URLs in embedded in javascript code"""
 
         print("\n [ URLs IN CODE ]_____________\n/")
-        for subdir, dirs, files, in os.walk("/tmp/extension"):
+        for subdir, dirs, files, in os.walk(self.sourcePath):
             for f in files:
                 if f.endswith(".js"):
                     lineCount = 0
