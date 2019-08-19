@@ -26,8 +26,8 @@ install_man_pages () {
   for file in ./Man/*; do
     filename="${file##*/}"
 
-    # skip the new man page creator script
-    if [ $filename == "newPage.py" ]; then
+    # skip the new man page creator script and the template man page
+    if [ $filename == "newPage.py" ] || [ $filename == "template.1" ]; then
       continue
 
     # install man page
