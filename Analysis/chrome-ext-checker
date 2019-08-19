@@ -129,7 +129,7 @@ class Analyzer:
                 else:
                     permission = "| " + permission
                 print(permission)
-        except BaseException:
+        except Exception:
             pass
         print(r"\_____________________________")
         return
@@ -142,17 +142,17 @@ class Analyzer:
             for script in manifest["background"]["scripts"]:
                 print("| " + script + "\n")
                 print(open(self.sourcePath + script, "r").read())
-        except BaseException:
+        except Exception:
             print("| no background scripts")
         try:
             for page in manifest["background"]["pages"]:
                 print("| " + page + "\n")
                 print(open(self.sourcePath + page, "r").read())
-        except BaseException:
+        except Exception:
             try:
                 page = manifest["background"]["page"]
                 print(open(self.sourcePath + page, "r").read())
-            except BaseException:
+            except Exception:
                 pass
         print(r"\_____________________________")
         return
@@ -205,7 +205,7 @@ class Analyzer:
                         str(ip))
                 else:
                     print("||   No of Reportings: " + str(tot))
-            except BaseException:
+            except Exception:
                 try:  # EAFP
                     URL = 'https://www.virustotal.com/vtapi/v2/URL/report'
                     params = {'apikey': VT_API_KEY, 'resource': ip}
@@ -217,7 +217,7 @@ class Analyzer:
                     # gives URL for report (further info)
                     print("||   VirusTotal Report Link: " +
                           str(result['permalink']))
-                except BaseException:
+                except Exception:
                     print("|| Not found in database")
         else:
             print(
@@ -250,7 +250,7 @@ class Analyzer:
                 print("||  Score: " + str(sc))
             else:
                 print('||  Error reaching BadIPs')
-        except BaseException:
+        except Exception:
             print('||  IP not found')
 
         print("||\n|| ABUSEIPDB Report:")
@@ -283,7 +283,7 @@ class Analyzer:
                       str(req['data']['lastReportedAt']))
             else:
                 print("||   Error Reaching ABUSE IPDB")
-        except BaseException:
+        except Exception:
             print('||   IP Not Found')
 
 

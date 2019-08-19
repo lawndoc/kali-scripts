@@ -1,0 +1,323 @@
+#!/usr/bin/env python3
+
+"""
+Author: C.J. May
+Description: takes a URL of a Chrome extension in the web store, downloads
+    it, extracts the source code, and analyzes it for permissions, background
+    tasks, and URLs embedded in the code
+
+[ Change Log ]
+8/16/19 - beautifies javascript to fix entire files on one line; extracts source code
+            to $TEMPDIR/$APPID/;
+
+8/15/19 - Initial release -- input raw URL > script analyzes permissions, background
+            tasks, and embedded URLs; works on both Linux and Windows
+"""
+
+#from sys import argv
+import argparse
+import jsbeautifier
+import json
+import os
+import requests
+import subprocess
+import tempfile
+from zipfile import ZipFile
+
+#VT_API_KEY = open("/root/.api/virus-total.api", "r").read()
+#AB_API_KEY = open("/root/.api/abuse-ip.api", "r").read()
+
+
+class UrlHandler:
+    """This class is capable of extracting the source code for a Chrome extension
+    given the URL for it in the Chrome web store"""
+
+    def __init__(self, extURL):
+        self.URL = extURL
+        self.manifest = ""
+        self.appID = self.getAppID(self.URL)
+        self.archiveLocation = tempfile.gettempdir() + os.sep + self.appID + ".crx"
+        self.sourcePath = tempfile.gettempdir() + os.sep + self.appID + os.sep
+
+    def getAppID(self, URL):
+        """Parse the extension ID from the given URL"""
+
+        url = URL
+        if "?" in url:
+            url = url[:url.index("?")]
+        if url.find("/"):
+            return url.rsplit("/", 1)[1]
+        else:
+            print("invalid URL")
+            exit()
+
+    def extractSourceCode(self):
+        """Extract the source code of the extension from the given URL"""
+
+        def extractCrx(URL):
+            """Download the Chrome extension archive and extract the source code"""
+
+            dlURL = "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=49.0&x=id%3D" \
+                    + self.appID \
+                    + "%26installsource%3Dondemand%26uc"
+            req = requests.get(dlURL, allow_redirects=True)
+            open(self.archiveLocation, "wb").write(req.content)
+            with ZipFile(self.archiveLocation, "r") as archive:
+                archive.extractall(self.sourcePath)
+
+        def beautifyJS():
+            """Clean up javascript for line by line analysis later on"""
+            for subdir, dirs, files, in os.walk(self.sourcePath):
+                for f in files:
+                    if f.endswith(".js"):
+                        pretty = jsbeautifier.beautify_file(subdir + os.sep + f)
+                        open(subdir + os.sep + f, "w").write(pretty)
+
+        extractCrx(self.URL)
+        beautifyJS()
+
+    def getManifest(self):
+        """Extract the xml manifest from the source code"""
+
+        with open(self.sourcePath+"manifest.json", "r") as f:
+            manifest = json.loads(f.read())
+        return manifest
+
+
+class Analyzer:
+    """This class is capable of analyzing the source code of a Chrome browser extension,
+    including looking for permissions, background tasks, and embedded URLs"""
+
+    def __init__(self, appID):
+        self.manifest = {}
+        self.appID = appID
+        self.sourcePath = tempfile.gettempdir() + os.sep + self.appID
+
+    def loadManifest(self, manifest):
+        """Load the xml manifest for analysis"""
+        self.manifest = manifest
+
+    def checkPermissions(self):
+        """Check what permissions the extension requires and flag permissions that Google considers
+        to be more intrusive"""
+
+        riskyPerms = [
+            "bookmarks",
+            "clipboardRead",
+            "clipboardWrite",
+            "contentSettings",
+            "debugger",
+            "desktopCapture",
+            "downloads",
+            "geolocation",
+            "history",
+            "management",
+            "nativeMessaging",
+            "pageCapture",
+            "privacy",
+            "proxy",
+            "tabCapture",
+            "tabs",
+            "topSites",
+            "ttsEngine",
+            "webNavigation"]
+        print("\n [ PERMISSIONS ]______________\n/")
+        try:
+            for permission in self.manifest["permissions"]:
+                if permission in riskyPerms:
+                    permission = "| " + permission + " -- RISKY"
+                else:
+                    permission = "| " + permission
+                print(permission)
+        except BaseException:
+            pass
+        print(r"\_____________________________")
+        return
+
+    def checkBackgroundTasks(self):
+        """List processes that run in the background"""
+
+        print("\n [ BACKGROUND TASKS ]_________\n/")
+        try:
+            for script in manifest["background"]["scripts"]:
+                print("| " + script + "\n")
+                print(open(self.sourcePath + script, "r").read())
+        except BaseException:
+            print("| no background scripts")
+        try:
+            for page in manifest["background"]["pages"]:
+                print("| " + page + "\n")
+                print(open(self.sourcePath + page, "r").read())
+        except BaseException:
+            try:
+                page = manifest["background"]["page"]
+                print(open(self.sourcePath + page, "r").read())
+            except BaseException:
+                pass
+        print(r"\_____________________________")
+        return
+
+    def checkJS(self):
+        """Look for URLs in embedded in javascript code"""
+
+        print("\n [ URLs IN CODE ]_____________\n/")
+        for subdir, dirs, files, in os.walk(self.sourcePath):
+            for f in files:
+                if f.endswith(".js"):
+                    lineCount = 0
+                    with open(subdir + os.sep + f, "r") as jsCode:
+                        for line in jsCode:
+                            if "http://" in line or "https://" in line:
+                                print(
+                                    "|\n| line", lineCount, "in " + subdir + "/" + f + ":")
+                                print("| " + line.strip())
+#                                foundUrl = re.search('".*?"', line) # cool regex bro
+#                                self.repChecker(foundUrl)
+                            lineCount += 1
+        print(r"\_____________________________")
+        return
+
+    def repChecker(self, ip):
+        """[Not fully implemented] Use VirusTotal and other API's to analyze a URL"""
+
+        whoIsPrint(ip)
+
+        print("||\n|| VirusTotal Report:")
+        URL = 'https://www.virustotal.com/vtapi/v2/ip-address/report'
+        params = {'apikey': VT_API_KEY, 'ip': ip}
+        response = requests.get(URL, params=params)
+
+        pos = 0
+        tot = 0
+        if response.status_code == 200:
+            try:    # try IP else fall through to URL
+                result = response.json()
+                for each in result['detected_URLs']:
+                    tot = tot + 1
+                    pos = pos + each['positives']
+
+                if tot != 0:
+                    print("||   No of Reportings: " + str(tot))
+                    print("||   Average Score:    " + str(pos / tot))
+                    print(
+                        "||   VirusTotal Report Link: " +
+                        "https://www.virustotal.com/gui/ip-address/" +
+                        str(ip))
+                else:
+                    print("||   No of Reportings: " + str(tot))
+            except BaseException:
+                try:  # EAFP
+                    URL = 'https://www.virustotal.com/vtapi/v2/URL/report'
+                    params = {'apikey': VT_API_KEY, 'resource': ip}
+                    response = requests.get(URL, params=params)
+                    result = response.json()
+                    print("||\n|| VirusTotal Report:")
+                    print("||   URL Malicious Reportings: " + \
+                          str(result['positives']) + "/" + str(result['total']))
+                    # gives URL for report (further info)
+                    print("||   VirusTotal Report Link: " +
+                          str(result['permalink']))
+                except BaseException:
+                    print("|| Not found in database")
+        else:
+            print(
+                "|| There's been an error - check your API key, or VirusTotal is possible down")
+
+        TOR_URL = "https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=1.1.1.1"
+        req = requests.get(TOR_URL)
+        print("||\n|| TOR Exit Node Report: ")
+        if req.status_code == 200:
+            tl = req.text.split('\n')
+            c = 0
+            for i in tl:
+                if ip == i:
+                    print("||  " + i + " is a TOR Exit Node")
+                    c = c + 1
+            if c == 0:
+                print("||  " + ip + " is NOT a TOR Exit Node")
+        else:
+            print("||   TOR LIST UNREACHABLE")
+
+        print("||\n|| Checking BadIP's... ")
+        try:
+            BAD_IPS_URL = 'https://www.badips.com/get/info/' + ip
+            response = requests.get(BAD_IPS_URL)
+            if response.status_code == 200:
+                result = response.json()
+
+                sc = result['Score']['ssh']
+                print("||  " + str(result['suc']))
+                print("||  Score: " + str(sc))
+            else:
+                print('||  Error reaching BadIPs')
+        except BaseException:
+            print('||  IP not found')
+
+        print("||\n|| ABUSEIPDB Report:")
+        try:
+            AB_URL = 'https://api.abuseipdb.com/api/v2/check'
+            days = '180'
+
+            querystring = {
+                'ipAddress': ip,
+                'maxAgeInDays': days
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Key': AB_API_KEY
+            }
+            response = requests.request(
+                method='GET',
+                URL=AB_URL,
+                headers=headers,
+                params=querystring)
+            if response.status_code == 200:
+                req = response.json()
+
+                print("||   IP:          " + str(req['data']['ipAddress']))
+                print("||   Reports:     " + str(req['data']['totalReports']))
+                print("||   Abuse Score: " +
+                      str(req['data']['abuseConfidenceScore']) + "%")
+                print("||   Last Report: " +
+                      str(req['data']['lastReportedAt']))
+            else:
+                print("||   Error Reaching ABUSE IPDB")
+        except BaseException:
+            print('||   IP Not Found')
+
+
+def main():
+    # get URL from passed arg or prompt
+    parser = argparse.ArgumentParser(description="Chrome browser extension analyzer")
+    parser.add_argument("-u", "--url",
+                        action="store",
+                        help="URL of extension in Chrome web store")
+# not ready
+#    parser.add_argument("-o", "--outputfile",
+#                        action="store",
+#                        help="Where to save the output of the analysis")
+    args = parser.parse_args()
+
+    if not args.url:
+        print("Please enter the URL of the extension in the Chrome web store.")
+        url = input("URL = ")
+    else:
+        url = args.url
+
+    # initialize objects
+    handler = UrlHandler(url)
+    analyzer = Analyzer(handler.appID)
+
+    # fetch source code data
+    handler.extractSourceCode()
+    manifest = handler.getManifest()
+
+    # analyze source code
+    analyzer.loadManifest(manifest)
+    analyzer.checkPermissions()
+    analyzer.checkBackgroundTasks()
+    analyzer.checkJS()
+
+
+main()
