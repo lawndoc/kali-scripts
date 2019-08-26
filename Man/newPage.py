@@ -2,6 +2,10 @@
 
 import datetime
 
+class ManPage:
+    def __init__(self):
+        pass # TODO
+
 DATE = datetime.datetime.now().strftime("%d %B %Y")
 
 NAME = ""
