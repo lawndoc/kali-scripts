@@ -7,6 +7,8 @@ Description: takes a URL of a Chrome extension in the web store, downloads
     tasks, and URLs embedded in the code
 
 [ Change Log ]
+9/6/19  - fixed UTF-8 decoding issue when running on Windows
+
 8/16/19 - beautifies javascript to fix entire files on one line; extracts source code
             to $TEMPDIR/$APPID/;
 
@@ -14,7 +16,6 @@ Description: takes a URL of a Chrome extension in the web store, downloads
             tasks, and embedded URLs; works on both Linux and Windows
 """
 
-#from sys import argv
 import argparse
 import jsbeautifier
 import json
@@ -70,8 +71,9 @@ class UrlHandler:
             for subdir, dirs, files, in os.walk(self.sourcePath):
                 for f in files:
                     if f.endswith(".js"):
-                        pretty = jsbeautifier.beautify_file(subdir + os.sep + f)
-                        open(subdir + os.sep + f, "w").write(pretty)
+                        inputString = open(subdir + os.sep + f, "r", encoding="UTF-8").read()
+                        prettyString = jsbeautifier.beautify(inputString)
+                        open(subdir + os.sep + f, "w", encoding="UTF-8").write(prettyString)
 
         extractCrx(self.URL)
         beautifyJS()
@@ -165,7 +167,7 @@ class Analyzer:
             for f in files:
                 if f.endswith(".js"):
                     lineCount = 0
-                    with open(subdir + os.sep + f, "r") as jsCode:
+                    with open(subdir + os.sep + f, "r", encoding="UTF-8") as jsCode:
                         for line in jsCode:
                             if "http://" in line or "https://" in line:
                                 print(
