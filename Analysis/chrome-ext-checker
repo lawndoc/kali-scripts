@@ -297,6 +297,7 @@ def main():
 #    parser.add_argument("-o", "--outputfile",
 #                        action="store",
 #                        help="Where to save the output of the analysis")
+
     args = parser.parse_args()
 
     if not args.url:
